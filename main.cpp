@@ -9,7 +9,6 @@
 #include <fcntl.h>
 #include <string>
 #include "ELF64/fix.h"
-#include "include/pmparser.h"
 
 using namespace std;
 
@@ -96,27 +95,23 @@ int main(int argc, char *argv[]) {
     printf("找到进程: %s, pid: %d\n", pkg, pid);
 
     uintptr_t start = 0, end = 0;
-    procmaps_iterator *maps = pmparser_parse(pid);
-
-    if (maps == NULL) {
-        printf("[map]: cannot parse the memory map of %d\n", pid);
-        return -1;
-    }
-
-    //iterate over areas
-    procmaps_struct *maps_tmp = NULL;
-
-    while ((maps_tmp = pmparser_next(maps)) != NULL) {
-        if (strstr(maps_tmp->pathname, so) != nullptr) {
-            if (!start) {
-                start = (uintptr_t) maps_tmp->addr_start;
+    char line[512];
+    sprintf(line, "/proc/%d/maps", pid);
+    FILE *fp = fopen(line, "r");
+    if (fp != nullptr) {
+        bool isFirst = true;
+        while (fgets(line, sizeof(line), fp)) {
+            if (strstr(line, so)) {
+                if (isFirst) {
+                    sscanf(line, "%lx-%lx %*s", &start, &end);
+                    isFirst = false;
+                } else {
+                    sscanf(line, "%*lx-%lx %*s", &end);
+                }
             }
-            end = (uintptr_t) maps_tmp->addr_end;
         }
+        fclose(fp);
     }
-
-    //mandatory: should free the list
-    pmparser_free(maps);
 
     if (start == 0 || end == 0) {
         printf("未找到so: %s\n", so);

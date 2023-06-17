@@ -42,5 +42,4 @@ include_directories(
 
 add_executable(SoDumper
         main.cpp
-        pmparser.cpp
         ELF64/fix.cpp)
