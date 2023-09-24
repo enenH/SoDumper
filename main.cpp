@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
                 sscanf(optarg, "%lx", &end);
                 break;
             default:
-                printf("Usage: %s [-p 包名] [-s so名字或路径]\n", argv[0]);
+                printf("1Usage: %s [-p 包名] [-s so名字或路径]\n", argv[0]);
                 break;
         }
     }
