@@ -66,6 +66,8 @@ static bool pvm(uintptr_t address, void *buffer, size_t size, bool iswrite) {
 
 int main(int argc, char *argv[]) {
     const char *pkg = nullptr, *so = nullptr;
+    uintptr_t start = 0, end = 0;
+
     int opt;
     while ((opt = getopt(argc, argv, "p:s:")) != -1) {
         switch (opt) {
@@ -75,13 +77,17 @@ int main(int argc, char *argv[]) {
             case 's':
                 so = optarg;
                 break;
+            case 'a':
+                sscanf(optarg, "%lx", &start);
+                break;
+            case 'b':
+                sscanf(optarg, "%lx", &end);
+                break;
             default:
                 printf("Usage: %s [-p 包名] [-s so名字或路径]\n", argv[0]);
                 break;
         }
     }
-    //pkg = "com.tencent.ig";
-    //so = "libUE4.so";
     if (pkg == nullptr || so == nullptr) {
         printf("Usage: %s [-p 包名] [-s so名字或路径]\n", argv[0]);
         return 0;
@@ -94,23 +100,24 @@ int main(int argc, char *argv[]) {
     }
     printf("找到进程: %s, pid: %d\n", pkg, pid);
 
-    uintptr_t start = 0, end = 0;
-    char line[512];
-    sprintf(line, "/proc/%d/maps", pid);
-    FILE *fp = fopen(line, "r");
-    if (fp != nullptr) {
-        bool isFirst = true;
-        while (fgets(line, sizeof(line), fp)) {
-            if (strstr(line, so)) {
-                if (isFirst) {
-                    sscanf(line, "%lx-%lx %*s", &start, &end);
-                    isFirst = false;
-                } else {
-                    sscanf(line, "%*lx-%lx %*s", &end);
+    if (start == 0 || end == 0) {
+        char line[512];
+        sprintf(line, "/proc/%d/maps", pid);
+        FILE *fp = fopen(line, "r");
+        if (fp != nullptr) {
+            bool isFirst = true;
+            while (fgets(line, sizeof(line), fp)) {
+                if (strstr(line, so)) {
+                    if (isFirst) {
+                        sscanf(line, "%lx-%lx %*s", &start, &end);
+                        isFirst = false;
+                    } else {
+                        sscanf(line, "%*lx-%lx %*s", &end);
+                    }
                 }
             }
+            fclose(fp);
         }
-        fclose(fp);
     }
 
     if (start == 0 || end == 0) {
