@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
     uintptr_t start = 0, end = 0;
 
     int opt;
-    while ((opt = getopt(argc, argv, "p:s:")) != -1) {
+    while ((opt = getopt(argc, argv, "p:s:a:b:")) != -1) {
         switch (opt) {
             case 'p':
                 pkg = optarg;
