@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-set(CMAKE_ANDROID_NDK D:/Android/SDK/ndk/25.2.9519653)
+set(CMAKE_ANDROID_NDK D:/Android/SDK/ndk/26.1.10909125)
 set(CMAKE_TOOLCHAIN_FILE ${CMAKE_ANDROID_NDK}/build/cmake/android.toolchain.cmake)
 set(CMAKE_SYSTEM_NAME Android)
 set(CMAKE_SYSTEM_VERSION 24)
@@ -35,11 +35,35 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${FLAG}")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY
         ${CMAKE_SOURCE_DIR}/outputs/${CMAKE_ANDROID_ARCH_ABI}/
-        ) # 重定向输出产物(可执行文件)
+) # 重定向输出产物(可执行文件)
 
 include_directories(
-        include)
+        include
+)
+
+aux_source_directory(KittyMemoryEx kitty-src)
+add_library(libkitty STATIC ${kitty-src})
 
 add_executable(SoDumper
         main.cpp
         ELF64/fix.cpp)
+
+include(FetchContent)
+####################################################### lsplt ###################################################
+FetchContent_Declare(
+        lsplt
+        GIT_REPOSITORY https://github.com/LSPosed/LSPlt.git
+        GIT_TAG master
+        SOURCE_SUBDIR lsplt/src/main/jni
+)
+
+FetchContent_MakeAvailable(lsplt)
+
+target_link_directories(SoDumper PRIVATE lib64)
+
+target_link_libraries(SoDumper
+        log
+        libkitty
+        libkeystone.a
+        lsplt_static
+)
