@@ -143,9 +143,16 @@ int main(int argc, char* argv[]) {
         for (auto it = maps.begin(); it != maps.end(); ++it) {
             if (!start) {
                 if (it->path.find(so) != std::string::npos && it->perms & PROT_EXEC) {
+                    start = it->start;
                     if (it != maps.begin()) {
                         auto prev_it = std::prev(it);
-                        start = prev_it->path.find(so) == std::string::npos ? it->start : prev_it->start;
+                        if (prev_it->path.find(so) != std::string::npos) {
+                            start = prev_it->start;
+                        }
+                        auto prev_prev_it = std::prev(prev_it);
+                        if (prev_prev_it->path.find(so) != std::string::npos) {
+                            start = prev_prev_it->start;
+                        }
                     }
                 }
             }
