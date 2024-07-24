@@ -84,6 +84,11 @@ uintptr_t getModuleBasePerfect(int pid, const char* module_name) {
     return result;
 }
 
+/*
+void test_fix() {
+    fix_so("/sdcard/libUE4.so.out", "/sdcard/libUE4.so.out.temp", 0x7041e32000);
+}
+*/
 
 int main(int argc, char* argv[]) {
     bool need_fix = true;

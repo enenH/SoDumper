@@ -165,8 +165,10 @@ static void _regen_section_header(const Elf_Ehdr_Type* pehdr,
         phdr[i].p_filesz = phdr[i].p_memsz;
         Elf_Word_Type p_type = phdr[i].p_type;
         if (phdr[i].p_type == PT_LOAD) {
+            printf("loadIndex=%d\n", loadIndex);
+            printf("phdr[i].p_vaddr=%p %p\n", phdr[i].p_vaddr, phdr[i].p_memsz);
             loadIndex++;
-            if (phdr[i].p_vaddr > 0x0 && loadIndex == 2) {
+            if (phdr[i].p_vaddr > 0x0/* && loadIndex == 2*/) {
                 lastLoad = phdr[i];
             }
         } else if (p_type == PT_DYNAMIC) {
@@ -373,7 +375,7 @@ static void _regen_section_header(const Elf_Ehdr_Type* pehdr,
     size_t relpltCount = g_shdr[RELPLT].sh_size / g_shdr[RELPLT].sh_entsize;
     if (__global_offset_table) {
         Elf_Word_Type gotBase = g_shdr[GOT].sh_addr;
-
+        printf("gotBase=%p\n", gotBase);
         //__global_offset_table里面成员个数等于RELPLT的成员数+3个固定成员
         Elf_Word_Type szGotEntry = 4;
         if (!isElf32) {
@@ -381,21 +383,24 @@ static void _regen_section_header(const Elf_Ehdr_Type* pehdr,
         }
         Elf_Word_Type gotEnd =
             __global_offset_table + szGotEntry * (relpltCount + 3);
-
+        printf("gotEnd=%p\n", gotEnd);
         //上面那种方式计算不可靠，根据libGameCore.so分析，nRelPlt比数量比实际GOT数量多10个，暂时没发现这十个成员的特殊性
         //.got的结尾就是.data的开始，根据经验，data的地址总是与0x1000对齐。以此来修正地址
         Elf_Word_Type gotEndTry = gotEnd & ~0x0FFF;
         if (__global_offset_table < gotEndTry) {
             gotEnd = gotEndTry;
         }
-
+        printf("gotEnd=%p\n", gotEnd);
         g_shdr[DATA].sh_name = _get_off_in_shstrtab(".data");
         g_shdr[DATA].sh_type = SHT_PROGBITS;
         g_shdr[DATA].sh_flags = SHF_WRITE | SHF_ALLOC;
         g_shdr[DATA].sh_addr = paddup(gotEnd, 0x1000);
+        printf("g_shdr[DATA].sh_addr=%p\n", g_shdr[DATA].sh_addr);
         g_shdr[DATA].sh_offset = g_shdr[DATA].sh_addr;
         g_shdr[DATA].sh_size =
             lastLoad.p_vaddr + lastLoad.p_memsz - g_shdr[DATA].sh_addr;
+        printf("g_shdr[DATA].sh_size=%p\n", g_shdr[DATA].sh_size);
+        printf(" lastLoad.p_vaddr=%p lastLoad.p_memsz=%p\n", lastLoad.p_vaddr, lastLoad.p_memsz);
         g_shdr[DATA].sh_addralign = align;
         if (gotEnd > gotBase) {
             g_shdr[GOT].sh_size = gotEnd - gotBase;
@@ -458,6 +463,7 @@ static void _regen_section_header(const Elf_Ehdr_Type* pehdr,
             }
             sym->st_info = (unsigned char)(c | newType);
         }
+        // printf( "sym->st_name=%s\n",buffer + g_shdr[DYNSTR].sh_addr+ sym->st_name);
         sym++;
     }
 
@@ -551,6 +557,27 @@ static void _fix_elf(char* buffer, size_t flen, FILE* fw, uint64_t ptrbase) {
 
     //就在原来文件最后加上段名字符串段
     g_shdr[STRTAB].sh_offset = flen;
+    //检查覆盖.data段的情况，如果.data段和其他冲突
+    auto dataStart = g_shdr[DATA].sh_addr;
+    auto dataEnd = dataStart + g_shdr[DATA].sh_size;
+
+    auto dsymStart = g_shdr[DYNSYM].sh_addr;
+    auto dsymEnd = dsymStart + g_shdr[DYNSYM].sh_size;
+
+    auto dynamicStart = g_shdr[DYNAMIC].sh_addr;
+    auto dynamicEnd = dynamicStart + g_shdr[DYNAMIC].sh_size;
+
+    if (dataStart < dsymEnd && dataEnd > dsymStart) {
+        printf("warning .data segment conflict with .dynsym segment\n");
+        g_shdr[DATA].sh_size = dsymStart - dataStart;
+    }
+    dataStart = g_shdr[DATA].sh_addr;
+    dataEnd = dataStart + g_shdr[DATA].sh_size;
+    if (dataStart < dynamicEnd && dataEnd > dynamicStart) {
+        printf("warning .data segment conflict with .dynamic segment\n");
+        g_shdr[DATA].sh_size = dynamicStart - dataStart;
+    }
+
     size_t szEhdr = sizeof(Elf_Ehdr_Type);
     // Elf头
     fwrite(&ehdr, szEhdr, 1, fw);
@@ -560,6 +587,11 @@ static void _fix_elf(char* buffer, size_t flen, FILE* fw, uint64_t ptrbase) {
     fwrite(g_strtabcontent, shstrtabsz, 1, fw);
     //补上段表头
     fwrite(&g_shdr, sizeof(g_shdr), 1, fw);
+
+
+    for (int i = 0; i < SHDRS; i++) {
+        printf("vaddr=%08x offset=%08x size=%08x\n", g_shdr[i].sh_addr, g_shdr[i].sh_offset, g_shdr[i].sh_size);
+    }
 }
 
 int fix_so(const char* openPath, const char* outPutPath, uint64_t ptrbase) {
