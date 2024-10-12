@@ -145,38 +145,55 @@ int main(int argc, char* argv[]) {
 
     if (start == 0 || end == 0) {
         auto maps = lsplt::MapInfo::Scan(std::to_string(pid));
-        for (auto it = maps.begin(); it != maps.end(); ++it) {
-            if (!start) {
-                if (it->path.find(so) != std::string::npos && it->perms & PROT_EXEC) {
-                    start = it->start;
-                    if (it != maps.begin()) {
-                        auto prev_it = std::prev(it);
-                        if (prev_it->path.find(so) != std::string::npos) {
-                            start = prev_it->start;
-                        }
-                        auto prev_prev_it = std::prev(prev_it);
-                        if (prev_prev_it->path.find(so) != std::string::npos) {
-                            start = prev_prev_it->start;
-                        }
-                    }
+        /*while ((maps_tmp = pmparser_next(maps)) != NULL) {
+            if (strstr(maps_tmp->pathname, so) != nullptr) {
+                if (!start) {
+                    start = (uintptr_t) maps_tmp->addr_start;
                 }
+                end = (uintptr_t) maps_tmp->addr_end;
             }
-            if (!end && start) {
-                if (it->path.find(so) == std::string::npos) {
-                    auto next_it = std::next(it);
-
-                    if (next_it != maps.end() && next_it->path.find(so) == std::string::npos) {
-                        auto next_next_it = std::next(next_it);
-                        if (next_next_it != maps.end() && next_next_it->path.find(so) == std::string::npos) {
+        }*/
+        for (auto& map : maps) {
+            if (map.path.find(so) != std::string::npos) {
+                if (!start) {
+                    start = map.start;
+                }
+                end = map.end;
+            }
+            /*auto maps = lsplt::MapInfo::Scan(std::to_string(pid));
+            for (auto it = maps.begin(); it != maps.end(); ++it) {
+                if (!start) {
+                    if (it->path.find(so) != std::string::npos && it->perms & PROT_EXEC) {
+                        start = it->start;
+                        if (it != maps.begin()) {
                             auto prev_it = std::prev(it);
                             if (prev_it->path.find(so) != std::string::npos) {
-                                end = it->path.find("[anon:.bss]") != std::string::npos ? it->end : prev_it->end;
-                                break;
+                                start = prev_it->start;
+                            }
+                            auto prev_prev_it = std::prev(prev_it);
+                            if (prev_prev_it->path.find(so) != std::string::npos) {
+                                start = prev_prev_it->start;
                             }
                         }
                     }
                 }
-            }
+                if (!end && start) {
+                    if (it->path.find(so) == std::string::npos) {
+                        auto next_it = std::next(it);
+
+                        if (next_it != maps.end() && next_it->path.find(so) == std::string::npos) {
+                            auto next_next_it = std::next(next_it);
+                            if (next_next_it != maps.end() && next_next_it->path.find(so) == std::string::npos) {
+                                auto prev_it = std::prev(it);
+                                if (prev_it->path.find(so) != std::string::npos) {
+                                    end = it->path.find("[anon:.bss]") != std::string::npos ? it->end : prev_it->end;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }*/
         }
     }
     if (start == 0 || end == 0) {
